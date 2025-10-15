@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi Peminjaman Berkas Perkara</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Mengadopsi pendekatan Single Page Application (SPA) dengan tiga tampilan utama yang dikelola oleh navigasi tab: 'Dashboard', 'Peminjaman (Keluar)', dan 'Pengembalian (Masuk)'. Struktur ini dipilih karena secara langsung memetakan alur kerja utama pengguna (melihat status, mencatat peminjaman, mencatat pengembalian), sehingga lebih intuitif dan efisien daripada hanya membaca dokumen panduan. Dashboard memberikan ringkasan status secara cepat, sementara formulir khusus pada tab lain menyederhanakan proses entri data dan mengurangi potensi kesalahan. -->
+    <!-- Visualization & Content Choices: 
+        1. Kartu Statistik (KPI): Info Laporan (Jumlah total berkas, jumlah keluar/masuk) -> Tujuan (Informasi Cepat) -> Metode (Blok HTML/div dengan Tailwind) -> Interaksi (Nilai diperbarui secara dinamis saat data berubah) -> Justifikasi (Memberikan gambaran umum tingkat tinggi secara instan).
+        2. Tabel Status Interaktif: Info Laporan (Daftar semua berkas dan statusnya) -> Tujuan (Mengorganisir & Menginformasikan) -> Metode (Tabel HTML dengan fungsionalitas JavaScript) -> Interaksi (Pencarian/Filter, pengurutan kolom) -> Justifikasi (Cara paling efektif untuk menampilkan dan menjelajahi data terstruktur yang detail).
+        3. Formulir Entri Data: Info Laporan (Kebutuhan input data untuk keluar/masuk) -> Tujuan (Input Data) -> Metode (Formulir HTML dengan validasi JS) -> Interaksi (Dropdown dinamis untuk pengembalian berkas yang aktif, validasi, dan feedback setelah submit) -> Justifikasi (Standar untuk entri data; dropdown dinamis secara signifikan meningkatkan integritas data dan pengalaman pengguna dibandingkan input manual).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; }
+        .tab-btn { transition: all 0.3s ease; }
+        .tab-btn.active { border-color: #2563eb; color: #2563eb; background-color: #dbeafe; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .status-out { background-color: #fef9c3; color: #ca8a04; }
+        .status-in { background-color: #dcfce7; color: #16a34a; }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Sistem Informasi Peminjaman Arsip Perkara</h1>
+            <p class="text-md text-gray-600 mt-2">Mahkamah Syar'iyah Langsa</p>
+        </header>
+
+        <nav class="flex justify-center border-b border-gray-200 mb-8">
+            <button data-view="dashboard" class="tab-btn active py-4 px-6 text-lg font-medium border-b-2 border-transparent text-gray-600 hover:text-blue-600">
+                📊 Dashboard
+            </button>
+            <button data-view="peminjaman" class="tab-btn py-4 px-6 text-lg font-medium border-b-2 border-transparent text-gray-600 hover:text-blue-600">
+                📤 Peminjaman (Keluar)
+            </button>
+            <button data-view="pengembalian" class="tab-btn py-4 px-6 text-lg font-medium border-b-2 border-transparent text-gray-600 hover:text-blue-600">
+                📥 Pengembalian (Masuk)
+            </button>
+        </nav>
+
+        <main>
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="view active">
+                <div class="text-center mb-8">
+                     <h2 class="text-2xl font-semibold text-gray-800">Status Berkas Terkini</h2>
+                     <p class="text-gray-500 mt-1">Pantau semua berkas perkara yang tercatat dalam sistem secara real-time.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                        <h3 class="text-gray-500 text-lg">Total Berkas Tercatat</h3>
+                        <p id="total-berkas" class="text-4xl font-bold mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                        <h3 class="text-gray-500 text-lg">Berkas di Luar</h3>
+                        <p id="berkas-keluar" class="text-4xl font-bold mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                        <h3 class="text-gray-500 text-lg">Berkas di Arsip</h3>
+                        <p id="berkas-di-arsip" class="text-4xl font-bold mt-2">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                        <h3 class="text-xl font-semibold">Daftar Semua Berkas</h3>
+                        <input type="text" id="search-input" placeholder="🔍 Cari Nomor Perkara..." class="form-input md:w-1/3">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-4 font-semibold">Nomor Perkara</th>
+                                    <th class="p-4 font-semibold">Jenis Perkara</th>
+                                    <th class="p-4 font-semibold">Status</th>
+                                    <th class="p-4 font-semibold">Penerima Terakhir</th>
+                                    <th class="p-4 font-semibold">Tanggal Keluar</th>
+                                    <th class="p-4 font-semibold">Tanggal Masuk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="berkas-table-body">
+                                <!-- Data akan diisi oleh JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Peminjaman View -->
+            <section id="peminjaman-view" class="view">
+				<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+					<h2 class="text-2xl font-semibold text-gray-800 text-center">Formulir Peminjaman Berkas (Keluar)</h2>
+                    <p class="text-gray-500 mt-1 text-center mb-8">Gunakan formulir ini untuk mencatat berkas yang telah dikembalikan ke arsip.</p>
+                    
+					<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfG9vbxAwuWciK77PvNiyaYYAupchqOCrLPs1ZPPXBrH2aUjw/viewform?embedded=true" width="640" height="469" frameborder="0" marginheight="0" marginwidth="0">Memuat…</iframe>
+				</div>
+            </section>
+
+            <!-- Pengembalian View -->
+            <section id="pengembalian-view" class="view">
+                 <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold text-gray-800 text-center">Formulir Pengembalian Berkas (Masuk)</h2>
+                    <p class="text-gray-500 mt-1 text-center mb-8">Gunakan formulir ini untuk mencatat berkas yang telah dikembalikan ke arsip.</p>
+					<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSe6omWhLBCUHBV5kknUemPmX4Klhfyt6G7J3QXB0Jpty_YAmw/viewform?embedded=true" width="640" height="1551" frameborder="0" marginheight="0" marginwidth="0">Memuat…</iframe>
+				</div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let dataBerkas = [
+                { id: 1, nomorPerkara: '123/Pdt.G/2024/MS.Lgs', jenisPerkara: 'Cerai Gugat', penerima: 'Panitera Pengganti A', tglKeluar: '2024-10-01', petugasKeluar: 'Ahmad Subarjo', tglMasuk: null, petugasMasuk: null, penyerah: null, status: 'BERKAS DI LUAR' },
+                { id: 2, nomorPerkara: '45/Pdt.P/2024/MS.Lgs', jenisPerkara: 'Penetapan Ahli Waris', penerima: 'Hakim B', tglKeluar: '2024-09-28', petugasKeluar: 'Ahmad Subarjo', tglMasuk: '2024-10-05', petugasMasuk: 'Siti Aminah', penyerah: 'Hakim B', status: 'BERKAS DI ARSIP' },
+                { id: 3, nomorPerkara: '78/Jinayat/2024/MS.Lgs', jenisPerkara: 'Maisir', penerima: 'Jurusita C', tglKeluar: '2024-10-10', petugasKeluar: 'Siti Aminah', tglMasuk: null, petugasMasuk: null, penyerah: null, status: 'BERKAS DI LUAR' },
+            ];
+
+            const views = document.querySelectorAll('.view');
+            const navButtons = document.querySelectorAll('.tab-btn');
+            const tableBody = document.getElementById('berkas-table-body');
+            const searchInput = document.getElementById('search-input');
+            const peminjamanForm = document.getElementById('peminjaman-form');
+            const pengembalianForm = document.getElementById('pengembalian-form');
+
+            const renderDashboard = (filter = '') => {
+                tableBody.innerHTML = '';
+                let filteredData = dataBerkas;
+
+                if (filter) {
+                    filteredData = dataBerkas.filter(b => b.nomorPerkara.toLowerCase().includes(filter.toLowerCase()));
+                }
+
+                if (filteredData.length === 0) {
+                     tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-gray-500">Data tidak ditemukan.</td></tr>`;
+                }
+
+                filteredData.forEach(berkas => {
+                    const statusClass = berkas.status === 'BERKAS DI LUAR' ? 'status-out' : 'status-in';
+                    const row = `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-4 font-medium text-gray-800">${berkas.nomorPerkara}</td>
+                            <td class="p-4 text-gray-600">${berkas.jenisPerkara}</td>
+                            <td class="p-4"><span class="px-3 py-1 text-sm font-medium rounded-full ${statusClass}">${berkas.status}</span></td>
+                            <td class="p-4 text-gray-600">${berkas.penerima}</td>
+                            <td class="p-4 text-gray-600">${berkas.tglKeluar}</td>
+                            <td class="p-4 text-gray-600">${berkas.tglMasuk || 'N/A'}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+                updateStats();
+            };
+            
+            const updateStats = () => {
+                document.getElementById('total-berkas').textContent = dataBerkas.length;
+                const keluarCount = dataBerkas.filter(b => b.status === 'BERKAS DI LUAR').length;
+                document.getElementById('berkas-keluar').textContent = keluarCount;
+                document.getElementById('berkas-di-arsip').textContent = dataBerkas.length - keluarCount;
+            };
+
+            const switchView = (viewName) => {
+                navButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.view === viewName);
+                });
+                views.forEach(view => {
+                    view.classList.toggle('active', view.id === `${viewName}-view`);
+                });
+                
+                if(viewName === 'pengembalian'){
+                    populatePengembalianDropdown();
+                }
+            };
+            
+            const populatePengembalianDropdown = () => {
+                const select = document.getElementById('r-nomor-perkara');
+                select.innerHTML = '<option value="">-- Pilih Berkas yang Dikembalikan --</option>';
+                const berkasKeluar = dataBerkas.filter(b => b.status === 'BERKAS DI LUAR');
+                berkasKeluar.forEach(berkas => {
+                    const option = document.createElement('option');
+                    option.value = berkas.id;
+                    option.textContent = berkas.nomorPerkara;
+                    select.appendChild(option);
+                });
+            };
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => switchView(button.dataset.view));
+            });
+
+            searchInput.addEventListener('input', (e) => {
+                renderDashboard(e.target.value);
+            });
+
+            peminjamanForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newBerkas = {
+                    id: dataBerkas.length > 0 ? Math.max(...dataBerkas.map(b => b.id)) + 1 : 1,
+                    nomorPerkara: document.getElementById('p-nomor-perkara').value,
+                    jenisPerkara: document.getElementById('p-jenis-perkara').value,
+                    penerima: document.getElementById('p-nama-penerima').value,
+                    tglKeluar: document.getElementById('p-tanggal-keluar').value,
+                    petugasKeluar: document.getElementById('p-petugas-arsip').value,
+                    tglMasuk: null,
+                    petugasMasuk: null,
+                    penyerah: null,
+                    status: 'BERKAS DI LUAR'
+                };
+                
+                // Cek apakah berkas sudah ada dan statusnya di luar
+                const existingOut = dataBerkas.find(b => b.nomorPerkara === newBerkas.nomorPerkara && b.status === 'BERKAS DI LUAR');
+                if (existingOut) {
+                    alert('Gagal: Berkas dengan nomor ini sudah tercatat sedang dipinjam.');
+                    return;
+                }
+
+                dataBerkas.push(newBerkas);
+                peminjamanForm.reset();
+                alert('Peminjaman berkas berhasil dicatat!');
+                switchView('dashboard');
+                renderDashboard();
+            });
+            
+            pengembalianForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const berkasId = parseInt(document.getElementById('r-nomor-perkara').value);
+                const berkasToUpdate = dataBerkas.find(b => b.id === berkasId);
+
+                if(berkasToUpdate) {
+                    berkasToUpdate.tglMasuk = document.getElementById('r-tanggal-masuk').value;
+                    berkasToUpdate.penyerah = document.getElementById('r-nama-penyerah').value;
+                    berkasToUpdate.petugasMasuk = document.getElementById('r-petugas-arsip').value;
+                    berkasToUpdate.status = 'BERKAS DI ARSIP';
+                    
+                    pengembalianForm.reset();
+                    alert('Pengembalian berkas berhasil dicatat!');
+                    switchView('dashboard');
+                    renderDashboard();
+                } else {
+                    alert('Error: Berkas tidak ditemukan.');
+                }
+            });
+
+            renderDashboard();
+        });
+    </script>
+</body>
+</html>
